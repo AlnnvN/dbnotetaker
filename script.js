@@ -3,6 +3,11 @@ const saveButton = document.getElementById("save-button");
 const displayDiv = document.getElementById("display-div");
 const body1 = document.getElementsByTagName("body");
 
+var localStorageName = "note-taker-local-storage";
+var hasLoaded = false;
+
+loadNotes();
+
 saveButton.addEventListener('click',()=>{//save button - create new note
 
     let isRepeated = false;//check for repeated texts
@@ -12,9 +17,16 @@ saveButton.addEventListener('click',()=>{//save button - create new note
         }
     }
 
-    if(textArea.value != "" && textArea.value[0] != " " && isRepeated === false)
-    createNewNote(textArea.value);
-    textArea.value = ""; //resets text area after input
+    if(textArea.value != "" && textArea.value[0] != " " && isRepeated === false && hasLoaded)
+    {
+        createNewNote(displayDiv.children.length,textArea.value);
+    }
+    
+    if(hasLoaded)
+    {
+        textArea.value = ""; //resets text area after input
+    }
+    
 })
 
 textArea.addEventListener('keydown', e=>{//auto resize
@@ -27,11 +39,16 @@ textArea.addEventListener('keyup', e=>{//auto resize
 
 //functions - global
 
-function createNewNote(input){
+function createNewNote(index, input){
 
     var noteDiv, buttonDiv;
-    var number = displayDiv.children.length+1;
 
+    if(hasLoaded)
+    {
+        editStorageNumber(index,index+1);
+        editStorageText(index,input);//store data
+    }
+    
     createNoteDiv();
     createTitle();
     createText();
@@ -47,6 +64,7 @@ function createNewNote(input){
         buttonDiv.appendChild(delBtn);
 
         delBtn.addEventListener('click', () => {
+            removeStorage(findArrayValueIndex(getStorage(),delBtn.parentElement.parentElement.children[1].innerHTML))
             delBtn.parentElement.parentElement.remove();
         });
     }
@@ -79,7 +97,7 @@ function createNewNote(input){
 
         function showDetails() {
 
-            let n = number;
+            let n = index;
 
             let modal = document.createElement('div'); //criação do modal (fundo branco)
             modal.id = "modal";
@@ -89,10 +107,10 @@ function createNewNote(input){
             let detailsTitle = document.createElement('h3'); //criação do titulo da nota detalhada
             detailsTitle.id="note-title";
             modal.appendChild(detailsTitle);
-            detailsTitle.innerHTML = innerHTML = "Note " + n;
+            detailsTitle.innerHTML = innerHTML = "Note " + (n+1);
 
             let pDetails = document.createElement('p'); //criação do paragrafo da nota detalhada
-            pDetails.innerHTML = input;
+            pDetails.innerHTML = getStorageIndex(n).text;
             modal.appendChild(pDetails);
 
         }
@@ -113,13 +131,13 @@ function createNewNote(input){
 
     function createText() {
         let text = document.createElement("p"); //creates paragraph
-        text.innerHTML = input; //takes input parameter from user
+        text.innerHTML = getStorageIndex(displayDiv.children.length-1).text; //takes input parameter from user
         noteDiv.appendChild(text);
     }
 
     function createTitle() {
         let title = document.createElement("h3"); //new title
-        title.innerHTML = "Note " + number; //changes title name (dynamic number)
+        title.innerHTML = "Note " + getStorageIndex(displayDiv.children.length-1).number; //changes title name (dynamic number)
         noteDiv.appendChild(title);
     }
 
@@ -139,3 +157,76 @@ function autoResize(){
     return;
 }
 
+function loadNotes() {
+    if(getStorage() === null)//creates storage if inexistent
+    {
+        resetStorage();
+    }
+
+    if (getStorage().length > 0) { //load notes if ready
+        console.log("ready to load");
+        for (let i = 0; i < getStorage().length; i++) {
+            createNewNote(i,"");
+        }
+    }
+
+    hasLoaded = true;
+}
+
+function resetStorage()
+{
+    localStorage.setItem(localStorageName,"[]");
+}
+
+function getStorage()
+{
+    return JSON.parse(localStorage.getItem(localStorageName));
+}
+
+function editStorageText(index,value)
+{
+    let storage = getStorage();
+    
+    storage[index][1] = value;
+    localStorage.setItem(localStorageName,JSON.stringify(storage));
+    return;
+}
+
+function editStorageNumber(index,value)
+{
+    let storage = getStorage();
+    
+    storage[index] = [];
+    storage[index][0] = value;
+    localStorage.setItem(localStorageName,JSON.stringify(storage));
+    return;
+}
+
+function getStorageIndex(index)
+{
+    let storage = getStorage();
+    let text = storage[index][1];
+    let number = storage[index][0];
+    return {text,number};
+}
+
+function findArrayValueIndex(array, value)
+{
+    let index;
+    for (let i = 0; i < array.length; i++) {
+        if(value === array[i][1])
+        {
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+function removeStorage(index)
+{
+    let storage = getStorage()
+    storage.splice(index,1);
+    localStorage.setItem(localStorageName,JSON.stringify(storage));
+    return;
+}
